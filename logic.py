@@ -44,7 +44,7 @@ async def start_bot(token, stake):
                     count_under_4 = sum(1 for d in digits if d < 4)
                     yield "📊 Analisando", f"Dígitos: {digits} | < 4: {count_under_4}"
 
-                    if count_under_4 >= 6:
+                    if count_under_4 >= 3:
                         yield "📈 Sinal Detectado", "Condição para OVER 3 atendida. Enviando ordem..."
 
                         await ws.send(json.dumps({
