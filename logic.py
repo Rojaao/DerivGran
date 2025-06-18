@@ -1,4 +1,3 @@
-
 import asyncio
 import websockets
 import json
@@ -32,15 +31,21 @@ async def start_bot(token, stake):
                 break
 
             if "tick" in msg:
-                digit = int(str(msg["tick"]["quote"])[-1])
+                quote = msg["tick"]["quote"]
+                digit = int(str(quote)[-1])
                 digits.append(digit)
+
+                yield "📥 Tick recebido", f"Preço: {quote} | Último dígito: {digit}"
+
                 if len(digits) > 8:
                     digits.pop(0)
 
                 if len(digits) == 8:
                     count_under_4 = sum(1 for d in digits if d < 4)
+                    yield "📊 Analisando", f"Dígitos: {digits} | < 4: {count_under_4}"
+
                     if count_under_4 >= 6:
-                        yield "📊 Sinal Detectado", f"Dígitos: {digits} (Menores que 4: {count_under_4})"
+                        yield "📈 Sinal Detectado", "Condição para OVER 3 atendida. Enviando ordem..."
 
                         await ws.send(json.dumps({
                             "buy": 1,
@@ -60,22 +65,22 @@ async def start_bot(token, stake):
                         buy_response = json.loads(await ws.recv())
                         if "buy" in buy_response:
                             contract_id = buy_response["buy"]["contract_id"]
-                            yield "✅ Compra feita", f"Contrato #{contract_id} enviado."
+                            yield "✅ Compra enviada", f"Contrato #{contract_id} iniciado."
 
                             while True:
                                 result_msg = json.loads(await ws.recv())
                                 if result_msg.get("contract") and result_msg["contract"].get("contract_id") == contract_id:
                                     status = result_msg["contract"]["status"]
                                     if status == "won":
-                                        yield "🏆 WIN", f"Lucro! Contrato #{contract_id} finalizado."
+                                        yield "🏆 WIN", f"Lucro! Contrato #{contract_id}"
                                         loss_count = 0
                                     elif status == "lost":
-                                        yield "💥 LOSS", f"Perda. Contrato #{contract_id} finalizado."
+                                        yield "💥 LOSS", f"Perda. Contrato #{contract_id}"
                                         loss_count += 1
                                     break
 
-                        if loss_count >= 2:
-                            wait = random.randint(6, 487)
-                            yield "🕒 Espera aleatória", f"Aguardando {wait} segundos após 2 perdas."
-                            await asyncio.sleep(wait)
-                            loss_count = 0
+                            if loss_count >= 2:
+                                wait = random.randint(6, 487)
+                                yield "🕒 Espera aleatória", f"Aguardando {wait} segundos após 2 perdas."
+                                await asyncio.sleep(wait)
+                                loss_count = 0
