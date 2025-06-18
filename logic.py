@@ -72,13 +72,14 @@ async def start_bot(token, stake):
                                 result_msg = json.loads(await ws.recv())
                                 if result_msg.get("contract") and result_msg["contract"].get("contract_id") == contract_id:
                                     status = result_msg["contract"]["status"]
+                                    profit = result_msg["contract"].get("profit", 0)
                                     if status == "won":
-                                        yield "🏆 WIN", f"Lucro! Contrato #{contract_id} - Valor entrada resetado para R${stake:.2f}"
+                                        yield "🏆 WIN", f"Lucro de ${profit:.2f}! Contrato #{contract_id} fechado."
                                         loss_count = 0
                                         current_stake = stake  # reset valor para original
                                     elif status == "lost":
+                                        yield "💥 LOSS", f"Prejuízo de ${profit:.2f}. Contrato #{contract_id} fechado."
                                         loss_count += 1
-                                        yield "💥 LOSS", f"Perda. Contrato #{contract_id} - Aposta multiplicada por 1.68 para R${current_stake * 1.68:.2f}"
                                         current_stake *= 1.68  # multiplica aposta
                                     break
 
