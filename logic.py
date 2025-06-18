@@ -25,11 +25,11 @@ async def start_bot(token, stake):
         loss_count = 0
 
         while True:
-            if not ws.open:
-                yield "🔌 Conexão fechada", "Reconectando..."
+            try:
+                msg = json.loads(await ws.recv())
+            except websockets.exceptions.ConnectionClosed:
+                yield "🔌 Conexão fechada", "Tentando reconectar..."
                 break
-
-            msg = json.loads(await ws.recv())
 
             if "tick" in msg:
                 digit = int(str(msg["tick"]["quote"])[-1])
