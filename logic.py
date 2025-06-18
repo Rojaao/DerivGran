@@ -24,8 +24,6 @@ async def start_bot(token, stake, threshold, take_profit, stop_loss, multiplicad
         loss_streak = 0
         current_stake = stake
         total_profit = 0
-        win_count = 0
-        loss_count = 0
         analyzing = True
 
         while True:
@@ -57,8 +55,7 @@ async def start_bot(token, stake, threshold, take_profit, stop_loss, multiplicad
                     yield "📊 Analisando", f"Dígitos: {digits} | < 4: {count_under_4}"
 
                     if count_under_4 >= threshold:
-                        analyzing = False  # Pausa a análise até finalizar o contrato
-
+                        analyzing = False
                         yield "📈 Sinal Detectado", f"{count_under_4} dígitos < 4. Enviando ordem de R${current_stake:.2f}..."
 
                         await ws.send(json.dumps({
@@ -81,32 +78,32 @@ async def start_bot(token, stake, threshold, take_profit, stop_loss, multiplicad
                             contract_id = buy_response["buy"]["contract_id"]
                             yield "✅ Compra enviada", f"Contrato #{contract_id} iniciado."
 
+                            # Aguarda o resultado do contrato
                             while True:
-                                result_msg = json.loads(await ws.recv())
-                                if result_msg.get("contract") and result_msg["contract"].get("contract_id") == contract_id:
-                                    status = result_msg["contract"]["status"]
-                                    profit = result_msg["contract"].get("profit", 0)
+                                contract_msg = json.loads(await ws.recv())
+                                if "contract" in contract_msg and contract_msg["contract"].get("contract_id") == contract_id:
+                                    status = contract_msg["contract"].get("status")
+                                    profit = contract_msg["contract"].get("profit", 0)
                                     total_profit += profit
 
                                     if status == "won":
-                                        win_count += 1
-                                        loss_streak = 0
-                                        current_stake = stake
                                         yield "🏆 WIN", f"Lucro ${profit:.2f} | Total: ${total_profit:.2f}"
+                                        current_stake = stake
+                                        loss_streak = 0
                                     elif status == "lost":
-                                        loss_count += 1
-                                        loss_streak += 1
                                         yield "💥 LOSS", f"Prejuízo ${profit:.2f} | Total: ${total_profit:.2f}"
+                                        loss_streak += 1
                                         if loss_streak >= 2:
                                             current_stake *= multiplicador
                                             yield "🔁 Multiplicador aplicado", f"Nova stake: R${current_stake:.2f}"
+
                                     break
 
                             digits.clear()
 
                             if loss_streak >= 2:
                                 wait = random.randint(6, 487)
-                                yield "🕒 Esperando", f"{wait} segundos após 2 perdas seguidas..."
+                                yield "🕒 Esperando", f"Aguardando {wait}s após 2 perdas..."
                                 await asyncio.sleep(wait)
 
-                            analyzing = True  # Retoma análise após operação
+                            analyzing = True  # Retoma a análise
