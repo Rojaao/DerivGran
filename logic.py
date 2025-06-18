@@ -45,7 +45,7 @@ async def start_bot(token, stake):
                     count_under_4 = sum(1 for d in digits if d < 4)
                     yield "📊 Analisando", f"Dígitos: {digits} | < 4: {count_under_4}"
 
-                    if count_under_4 >= 4:
+                    if count_under_4 >= 3:
                         yield "📈 Sinal Detectado", f"Condição para OVER 3 atendida. Enviando ordem com valor R${current_stake:.2f}..."
 
                         await ws.send(json.dumps({
@@ -73,12 +73,12 @@ async def start_bot(token, stake):
                                 if result_msg.get("contract") and result_msg["contract"].get("contract_id") == contract_id:
                                     status = result_msg["contract"]["status"]
                                     if status == "won":
-                                        yield "🏆 WIN", f"Lucro! Contrato #{contract_id}"
+                                        yield "🏆 WIN", f"Lucro! Contrato #{contract_id} - Valor entrada resetado para R${stake:.2f}"
                                         loss_count = 0
                                         current_stake = stake  # reset valor para original
                                     elif status == "lost":
-                                        yield "💥 LOSS", f"Perda. Contrato #{contract_id}"
                                         loss_count += 1
+                                        yield "💥 LOSS", f"Perda. Contrato #{contract_id} - Aposta multiplicada por 1.68 para R${current_stake * 1.68:.2f}"
                                         current_stake *= 1.68  # multiplica aposta
                                     break
 
