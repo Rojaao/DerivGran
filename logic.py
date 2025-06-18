@@ -45,7 +45,7 @@ async def start_bot(token, stake):
                     count_under_4 = sum(1 for d in digits if d < 4)
                     yield "📊 Analisando", f"Dígitos: {digits} | < 4: {count_under_4}"
 
-                    if count_under_4 >= 3:
+                    if count_under_4 >= 5:
                         yield "📈 Sinal Detectado", f"Condição para OVER 3 atendida. Enviando ordem com valor R${current_stake:.2f}..."
 
                         await ws.send(json.dumps({
@@ -55,7 +55,7 @@ async def start_bot(token, stake):
                                 "amount": current_stake,
                                 "basis": "stake",
                                 "contract_type": "DIGITOVER",
-                                "barrier": "3",
+                                "barrier": "4",
                                 "currency": "USD",
                                 "duration": 1,
                                 "duration_unit": "t",
