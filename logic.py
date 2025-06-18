@@ -22,6 +22,7 @@ async def start_bot(token, stake):
 
         digits = []
         loss_count = 0
+        current_stake = stake  # Valor que será usado na operação (ajustável)
 
         while True:
             try:
@@ -44,14 +45,14 @@ async def start_bot(token, stake):
                     count_under_4 = sum(1 for d in digits if d < 4)
                     yield "📊 Analisando", f"Dígitos: {digits} | < 4: {count_under_4}"
 
-                    if count_under_4 >= 3:
-                        yield "📈 Sinal Detectado", "Condição para OVER 3 atendida (3+ dígitos < 4). Enviando ordem..."
+                    if count_under_4 >= 4:
+                        yield "📈 Sinal Detectado", f"Condição para OVER 3 atendida. Enviando ordem com valor R${current_stake:.2f}..."
 
                         await ws.send(json.dumps({
                             "buy": 1,
-                            "price": stake,
+                            "price": current_stake,
                             "parameters": {
-                                "amount": stake,
+                                "amount": current_stake,
                                 "basis": "stake",
                                 "contract_type": "DIGITOVER",
                                 "barrier": "3",
@@ -74,12 +75,14 @@ async def start_bot(token, stake):
                                     if status == "won":
                                         yield "🏆 WIN", f"Lucro! Contrato #{contract_id}"
                                         loss_count = 0
+                                        current_stake = stake  # reset valor para original
                                     elif status == "lost":
                                         yield "💥 LOSS", f"Perda. Contrato #{contract_id}"
                                         loss_count += 1
+                                        current_stake *= 1.68  # multiplica aposta
                                     break
 
-                            digits.clear()  # Limpa os dígitos para reiniciar a coleta
+                            digits.clear()  # Limpa para nova análise
 
                             if loss_count >= 2:
                                 wait = random.randint(6, 487)
