@@ -26,6 +26,7 @@ async def start_bot(token, stake, threshold, take_profit, stop_loss, multiplicad
         total_profit = 0
         win_count = 0
         loss_count = 0
+        analyzing = True
 
         while True:
             if total_profit >= take_profit:
@@ -46,16 +47,18 @@ async def start_bot(token, stake, threshold, take_profit, stop_loss, multiplicad
                 digit = int(str(quote)[-1])
                 digits.append(digit)
 
-                yield "📥 Tick recebido", f"Preço: {quote} | Último dígito: {digit}"
-
                 if len(digits) > 8:
                     digits.pop(0)
 
-                if len(digits) == 8:
+                yield "📥 Tick recebido", f"Preço: {quote} | Último dígito: {digit}"
+
+                if analyzing and len(digits) == 8:
                     count_under_4 = sum(1 for d in digits if d < 4)
                     yield "📊 Analisando", f"Dígitos: {digits} | < 4: {count_under_4}"
 
                     if count_under_4 >= threshold:
+                        analyzing = False  # Pausa a análise até finalizar o contrato
+
                         yield "📈 Sinal Detectado", f"{count_under_4} dígitos < 4. Enviando ordem de R${current_stake:.2f}..."
 
                         await ws.send(json.dumps({
@@ -106,4 +109,4 @@ async def start_bot(token, stake, threshold, take_profit, stop_loss, multiplicad
                                 yield "🕒 Esperando", f"{wait} segundos após 2 perdas seguidas..."
                                 await asyncio.sleep(wait)
 
-                        # continua automaticamente com nova análise
+                            analyzing = True  # Retoma análise após operação
