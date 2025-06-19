@@ -85,3 +85,45 @@ async def start_bot(token, stake, threshold, take_profit, stop_loss, multiplicad
                                 "parameters": {
                                     "amount": current_stake,
                                     "basis": "stake",
+                                    "contract_type": tipo,
+                                    "barrier": barrier,
+                                    "currency": "USD",
+                                    "duration": 1,
+                                    "duration_unit": "t",
+                                    "symbol": "R_100"
+                                }
+                            }))
+
+                            buy_response = json.loads(await ws.recv())
+                            if "buy" in buy_response:
+                                contract_id = buy_response["buy"]["contract_id"]
+                                yield "✅ Compra enviada", f"Contrato #{contract_id} iniciado.", False
+
+                                await ws.send(json.dumps({
+                                    "proposal_open_contract": 1,
+                                    "contract_id": contract_id
+                                }))
+                                contract = await aguardar_resultado(ws, contract_id)
+                                status = contract.get("status")
+                                profit = float(contract.get("profit", 0))
+                                total_profit += profit
+
+                                if status == "won":
+                                    loss_streak = 0
+                                    current_stake = stake
+                                    yield "🏆 WIN", f"Lucro ${profit:.2f} | Total: ${total_profit:.2f}", False
+                                elif status == "lost":
+                                    loss_streak += 1
+                                    yield "💥 LOSS", f"Prejuízo ${profit:.2f} | Total: ${total_profit:.2f}", False
+                                    if loss_streak >= 2:
+                                        current_stake *= multiplicador
+                                        yield "🔁 Martingale", f"Nova stake: ${current_stake:.2f}", False
+
+                                digits.clear()
+                                wait_time = random.randint(5, 120)
+                                yield "⏳ Pausa", f"Aguardando {wait_time} segundos...", False
+                                await asyncio.sleep(wait_time)
+
+            except Exception as e:
+                yield "❌ Erro interno", str(e), False
+                await asyncio.sleep(5)
