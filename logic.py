@@ -1,4 +1,3 @@
-
 import asyncio
 import websockets
 import json
@@ -38,88 +37,51 @@ async def start_bot(token, stake, threshold, take_profit, stop_loss, multiplicad
         total_profit = 0
 
         while True:
-            if total_profit >= take_profit:
-                yield "🏁 Meta Atingida", f"Lucro total ${total_profit:.2f} ≥ Meta ${take_profit:.2f}", True
-                return
-            if abs(total_profit) >= stop_loss:
-                yield "🛑 Stop Loss Atingido", f"Perda total ${total_profit:.2f} ≥ Limite ${stop_loss:.2f}", True
-                return
-
             try:
-                msg = json.loads(await ws.recv())
-            except websockets.exceptions.ConnectionClosed:
-                yield "🔌 Conexão fechada", "Tentando reconectar...", True
-                return
+                if total_profit >= take_profit:
+                    yield "🏁 Meta Atingida", f"Lucro total ${total_profit:.2f} ≥ Meta ${take_profit:.2f}", True
+                    return
+                if abs(total_profit) >= stop_loss:
+                    yield "🛑 Stop Loss Atingido", f"Perda total ${total_profit:.2f} ≥ Limite ${stop_loss:.2f}", True
+                    return
 
-            if "tick" in msg:
-                quote = msg["tick"]["quote"]
-                digit = int(str(quote)[-1])
-                digits.append(digit)
-                yield "📥 Tick recebido", f"Preço: {quote} | Último dígito: {digit}", False
+                try:
+                    msg = json.loads(await ws.recv())
+                except websockets.exceptions.ConnectionClosed:
+                    yield "🔌 Conexão fechada", "Tentando reconectar...", True
+                    return
 
-                if len(digits) > 8:
-                    digits.pop(0)
+                if "tick" in msg:
+                    quote = msg["tick"]["quote"]
+                    digit = int(str(quote)[-1])
+                    digits.append(digit)
+                    yield "📥 Tick recebido", f"Preço: {quote} | Último dígito: {digit}", False
 
-                if len(digits) == 8:
-                    tipo = None
-                    barrier = None
+                    if len(digits) > 8:
+                        digits.pop(0)
 
-                    if estrategia == "Dígitos < 4 ≥ limite → Over 3":
-                        count_under_4 = sum(1 for d in digits if d < 4)
-                        yield "📊 Analisando", f"Dígitos: {digits} | < 4: {count_under_4}", False
-                        if count_under_4 >= threshold:
-                            tipo = "DIGITOVER"
-                            barrier = "3"
-                            yield "📈 Sinal Detectado", f"{count_under_4} dígitos < 4. Enviando OVER 3.", False
+                    if len(digits) == 8:
+                        tipo = None
+                        barrier = None
 
-                    elif estrategia in ["Nenhum dígito < 4 → Over 3 ou 4 aleatório", "0Matador"]:
-                        if all(d >= 4 for d in digits):
-                            tipo = "DIGITOVER"
-                            barrier = random.choice(["3", "4"])
-                            yield "🔥 Estratégia 0Matador", f"Dígitos: {digits}. Enviando OVER {barrier}", False
+                        if estrategia == "Dígitos < 4 ≥ limite → Over 3":
+                            count_under_4 = sum(1 for d in digits if d < 4)
+                            yield "📊 Analisando", f"Dígitos: {digits} | < 4: {count_under_4}", False
+                            if count_under_4 >= threshold:
+                                tipo = "DIGITOVER"
+                                barrier = "3"
+                                yield "📈 Sinal Detectado", f"{count_under_4} dígitos < 4. Enviando OVER 3.", False
 
-                    if tipo and barrier:
-                        await ws.send(json.dumps({
-                            "buy": 1,
-                            "price": current_stake,
-                            "parameters": {
-                                "amount": current_stake,
-                                "basis": "stake",
-                                "contract_type": tipo,
-                                "barrier": barrier,
-                                "currency": "USD",
-                                "duration": 1,
-                                "duration_unit": "t",
-                                "symbol": "R_100"
-                            }
-                        }))
+                        elif estrategia in ["Nenhum dígito < 4 → Over 3 ou 4 aleatório", "0Matador"]:
+                            if all(d >= 4 for d in digits):
+                                tipo = "DIGITOVER"
+                                barrier = random.choice(["3", "4"])
+                                yield "🔥 Estratégia 0Matador", f"Dígitos: {digits}. Enviando OVER {barrier}", False
 
-                        buy_response = json.loads(await ws.recv())
-                        if "buy" in buy_response:
-                            contract_id = buy_response["buy"]["contract_id"]
-                            yield "✅ Compra enviada", f"Contrato #{contract_id} iniciado.", False
-
+                        if tipo and barrier:
                             await ws.send(json.dumps({
-                                "proposal_open_contract": 1,
-                                "contract_id": contract_id
-                            }))
-                            contract = await aguardar_resultado(ws, contract_id)
-                            status = contract.get("status")
-                            profit = float(contract.get("profit", 0))
-                            total_profit += profit
-
-                            if status == "won":
-                                loss_streak = 0
-                                current_stake = stake
-                                yield "🏆 WIN", f"Lucro ${profit:.2f} | Total: ${total_profit:.2f}", False
-                            elif status == "lost":
-                                loss_streak += 1
-                                yield "💥 LOSS", f"Prejuízo ${profit:.2f} | Total: ${total_profit:.2f}", False
-                                if loss_streak >= 2:
-                                    current_stake *= multiplicador
-                                    yield "🔁 Martingale", f"Nova stake: ${current_stake:.2f}", False
-
-                            digits.clear()
-                            wait_time = random.randint(5, 120)
-                            yield "⏳ Pausa", f"Aguardando {wait_time} segundos...", False
-                            await asyncio.sleep(wait_time)
+                                "buy": 1,
+                                "price": current_stake,
+                                "parameters": {
+                                    "amount": current_stake,
+                                    "basis": "stake",
