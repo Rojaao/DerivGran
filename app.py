@@ -1,6 +1,25 @@
-
 import streamlit as st
 import asyncio, threading, websockets, json, random
+
+# --- Inicialização segura das variáveis de estado ---
+if "bot_running" not in st.session_state:
+    st.session_state.bot_running = False
+if "logs" not in st.session_state:
+    st.session_state.logs = []
+if "token" not in st.session_state:
+    st.session_state.token = ""
+if "stake" not in st.session_state:
+    st.session_state.stake = 1.0
+if "threshold" not in st.session_state:
+    st.session_state.threshold = 3
+if "take_profit" not in st.session_state:
+    st.session_state.take_profit = 50.0
+if "stop_loss" not in st.session_state:
+    st.session_state.stop_loss = 20.0
+if "mult" not in st.session_state:
+    st.session_state.mult = 1.68
+if "estrat" not in st.session_state:
+    st.session_state.estrat = "Padrão"
 
 # --- Lógica do robô ---
 async def ws_receiver(ws, queue):
@@ -54,14 +73,21 @@ async def bot_loop(token, stake, threshold, take_profit, stop_loss, multiplicado
                 alllt4 = all(d < 4 for d in digits)
                 st.session_state.logs.append(f"📊 Análise: c4={c4}, all<4={alllt4}")
 
-                if (estrategia == "Padrão" and c4 >= threshold) or                    (estrategia == "0matador" and alllt4):
+                if (estrategia == "Padrão" and c4 >= threshold) or \
+                   (estrategia == "0matador" and alllt4):
                     st.session_state.logs.append(f"📈 Enviando Over3 com R${current_stake:.2f}")
                     await ws.send(json.dumps({
-                        "buy":1, "price":current_stake,
-                        "parameters":{
-                            "amount":current_stake,"basis":"stake",
-                            "contract_type":"DIGITOVER","barrier":"3",
-                            "currency":"USD","duration":1,"duration_unit":"t","symbol":"R_100"
+                        "buy": 1,
+                        "price": current_stake,
+                        "parameters": {
+                            "amount": current_stake,
+                            "basis": "stake",
+                            "contract_type": "DIGITOVER",
+                            "barrier": "3",
+                            "currency": "USD",
+                            "duration": 1,
+                            "duration_unit": "t",
+                            "symbol": "R_100"
                         }
                     }))
                     waiting_buy = True
@@ -76,7 +102,7 @@ async def bot_loop(token, stake, threshold, take_profit, stop_loss, multiplicado
         if contract_active and "contract" in msg:
             c = msg["contract"]
             if c.get("contract_id") == contract_id:
-                profit = c.get("profit",0)
+                profit = c.get("profit", 0)
                 status = c.get("status")
                 total_profit += profit
                 if status == "won":
@@ -88,7 +114,7 @@ async def bot_loop(token, stake, threshold, take_profit, stop_loss, multiplicado
                     loss_streak += 1
                     if loss_streak >= 2:
                         current_stake *= multiplicador
-                        st.session_state.logs.append(f"🔁 Multiplicador {current_stake:.2f}")
+                        st.session_state.logs.append(f"🔁 Multiplicador ativado: novo stake = {current_stake:.2f}")
                 contract_active = False
 
     await ws.close()
@@ -112,22 +138,23 @@ def stop_bot():
     st.session_state.bot_running = False
 
 # --- Interface Streamlit ---
-st.title("BassBOT com Estratégia 0matador")
+st.title("🤖 BassBOT com Estratégia 0matador")
 
-st.text_input("Token Deriv", type="password", key="token")
-st.number_input("Stake", value=1.0, key="stake", min_value=0.1, step=0.1)
-st.selectbox("Estratégia", options=["Padrão","0matador"], key="estrat")
-st.number_input("Threshold (mín dígitos <4)", value=3, key="threshold", min_value=1, max_value=8)
-st.number_input("Take Profit", value=50.0, key="take_profit", min_value=0.1)
-st.number_input("Stop Loss", value=20.0, key="stop_loss", min_value=0.1)
-st.number_input("Multiplicador (após 2 perdas)", value=1.68, key="mult", min_value=1.0)
+st.text_input("🔑 Token Deriv", type="password", key="token")
+st.number_input("💰 Valor da entrada (stake)", value=1.0, key="stake", min_value=0.1, step=0.1)
+st.selectbox("📊 Estratégia", options=["Padrão", "0matador"], key="estrat")
+st.number_input("🎯 Qtd mínima de dígitos < 4 (para Estratégia Padrão)", value=3, key="threshold", min_value=1, max_value=8)
+st.number_input("🏆 Meta de lucro (Take Profit)", value=50.0, key="take_profit", min_value=0.1)
+st.number_input("🛑 Stop Loss", value=20.0, key="stop_loss", min_value=0.1)
+st.number_input("🔁 Multiplicador após 2 perdas", value=1.68, key="mult", min_value=1.0)
 
 col1, col2 = st.columns(2)
-if col1.button("▶️ Iniciar Robô"): start_bot()
-if col2.button("⛔ Parar Robô"): stop_bot()
+if col1.button("▶️ Iniciar Robô"):
+    start_bot()
+if col2.button("⛔ Parar Robô"):
+    stop_bot()
 
-st.subheader("Logs em tempo real:")
-if "logs" not in st.session_state:
-    st.session_state.logs = []
-for l in st.session_state.logs[-100:]:
-    st.write(l)
+st.markdown("---")
+st.subheader("📋 Logs em tempo real:")
+for line in st.session_state.logs[-100:]:
+    st.write(line)
