@@ -1,1 +1,0 @@
-# Funções auxiliares para análise e histórico
