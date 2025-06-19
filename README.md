@@ -1,1 +1,0 @@
-# Deriv Bot GPT - versão com histórico e análise contínua
