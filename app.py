@@ -1,5 +1,8 @@
 import streamlit as st
-import asyncio, threading, websockets, json
+import asyncio
+import threading
+import websockets
+import json
 
 # --- Inicialização segura do estado ---
 default_values = {
@@ -119,23 +122,29 @@ async def bot_loop(token, stake, threshold, take_profit, stop_loss, multiplicado
         st.session_state.bot_running = False
 
 def run_bot():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(bot_loop(
-        st.session_state.token,
-        st.session_state.stake,
-        st.session_state.threshold,
-        st.session_state.take_profit,
-        st.session_state.stop_loss,
-        st.session_state.mult,
-        st.session_state.estrat
-    ))
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        loop.run_until_complete(bot_loop(
+            st.session_state.token,
+            st.session_state.stake,
+            st.session_state.threshold,
+            st.session_state.take_profit,
+            st.session_state.stop_loss,
+            st.session_state.mult,
+            st.session_state.estrat
+        ))
+    except Exception as e:
+        st.session_state.logs.append(f"Erro no loop: {e}")
+    finally:
+        st.session_state.bot_running = False
 
 def start_bot():
     if not st.session_state.bot_running:
-        st.session_state.logs.append("🚀 Iniciando robô...")
         st.session_state.bot_running = True
-        threading.Thread(target=run_bot, daemon=True).start()
+        st.session_state.logs.append("🚀 Iniciando robô...")
+        thread = threading.Thread(target=run_bot)
+        thread.start()
 
 def stop_bot():
     st.session_state.bot_running = False
@@ -145,12 +154,12 @@ def stop_bot():
 st.title("🤖 BassBOT Estratégia 0matador + Padrão")
 
 st.text_input("🔑 Token Deriv", type="password", key="token")
-st.number_input("💰 Valor da entrada (stake)", value=st.session_state.stake, key="stake", min_value=0.1, step=0.1)
+st.number_input("💰 Valor da entrada (stake)", key="stake", min_value=0.1, step=0.1)
 st.selectbox("📊 Estratégia", options=["Padrão", "0matador"], key="estrat")
-st.number_input("🎯 Qtd mínima dígitos < 4 (Padrão)", value=st.session_state.threshold, key="threshold", min_value=1, max_value=8)
-st.number_input("🏆 Meta de lucro (Take Profit)", value=st.session_state.take_profit, key="take_profit", min_value=0.1)
-st.number_input("🛑 Stop Loss", value=st.session_state.stop_loss, key="stop_loss", min_value=0.1)
-st.number_input("🔁 Multiplicador após 2 perdas", value=st.session_state.mult, key="mult", min_value=1.0)
+st.number_input("🎯 Qtd mínima dígitos < 4 (Padrão)", key="threshold", min_value=1, max_value=8)
+st.number_input("🏆 Meta de lucro (Take Profit)", key="take_profit", min_value=0.1)
+st.number_input("🛑 Stop Loss", key="stop_loss", min_value=0.1)
+st.number_input("🔁 Multiplicador após 2 perdas", key="mult", min_value=1.0)
 
 col1, col2 = st.columns(2)
 if col1.button("▶️ Iniciar Robô"):
