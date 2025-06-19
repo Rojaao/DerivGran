@@ -1,1 +1,0 @@
-# Bot com verificação de lucro/perda, histórico e execução contínua
