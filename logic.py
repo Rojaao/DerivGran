@@ -69,7 +69,7 @@ async def start_bot(token, stake, threshold, take_profit, stop_loss, multiplicad
                             yield "📊 Analisando", f"Dígitos: {digits} | < 4: {count_under_4}", False
                             if count_under_4 >= threshold:
                                 tipo = "DIGITOVER"
-                                barrier = "3"
+                                barrier = "4"
                                 yield "📈 Sinal Detectado", f"{count_under_4} dígitos < 4. Enviando OVER 3.", False
 
                         elif estrategia in ["Nenhum dígito < 4 → Over 3 ou 4 aleatório", "0Matador"]:
